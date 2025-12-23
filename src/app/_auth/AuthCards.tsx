@@ -60,11 +60,11 @@ export function UnauthenticatedCard() {
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Typography variant="h6">Sign in required</Typography>
         <Typography variant="body2" color="text.secondary">
-          This area requires authentication. Click the button below to sign in via Keycloak.
+          This area requires authentication. Click the button below to sign in.
         </Typography>
         <Box>
           <Button variant="contained" onClick={() => void login()}>
-            Sign in with Keycloak
+            Sign in
           </Button>
         </Box>
       </CardContent>

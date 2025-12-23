@@ -1,13 +1,12 @@
-import type { KeycloakProfile, KeycloakTokenParsed } from 'keycloak-js'
+import type { User, UserProfile } from 'oidc-client-ts'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error'
 
 export type AuthState = {
   status: AuthStatus
   error?: string
-  profile?: KeycloakProfile
+  profile?: UserProfile
   token?: string
-  tokenParsed?: KeycloakTokenParsed
+  tokenParsed?: Record<string, unknown>
+  user?: User
 }
-
-

@@ -1,9 +1,9 @@
-## Next.js Demo – MUI Layout, Keycloak Auth, and Form Validation
+## Next.js Demo – MUI Layout, OIDC Auth, and Form Validation
 
 This project is a **Next.js App Router demo** that showcases:
 
 - **Next.js + Material UI layout** with a persistent sidebar, header, and static footer.
-- **Keycloak authentication (OIDC + PKCE)** with a feature flag to enable/disable auth per environment.
+- **OIDC authentication (PKCE)** using `oidc-client-ts` with Keycloak as the identity provider, with a feature flag to enable/disable auth per environment.
 - **Modern form handling and validation** using `react-hook-form` and `zod`.
 
 You can optionally rename the folder `nextjs-test` to `nextjs-demo` on your machine (e.g. `mv nextjs-test nextjs-demo`); no code changes are required other than updating any local paths or editor workspace references.
@@ -25,10 +25,10 @@ Then open `http://localhost:3000` in your browser.
 
 Authentication is controlled entirely via **public env vars**:
 
-- `NEXT_PUBLIC_AUTH_ENABLED` – `'true'` to enable Keycloak, `'false'` to run the app without auth.
+- `NEXT_PUBLIC_AUTH_ENABLED` – `'true'` to enable OIDC authentication, `'false'` to run the app without auth.
 - `NEXT_PUBLIC_KEYCLOAK_URL` – base URL of your Keycloak server (e.g. `http://localhost:9090`).
 - `NEXT_PUBLIC_KEYCLOAK_REALM` – realm name.
-- `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` – public SPA client ID.
+- `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` – public SPA client ID configured for PKCE.
 - `NEXT_PUBLIC_KEYCLOAK_ONLOAD` – `login-required` or `check-sso` (defaults to `check-sso`).
 
 Example `.env.local`:
@@ -45,7 +45,7 @@ NEXT_PUBLIC_AUTH_ENABLED=false
 ```
 
 When auth is **enabled**, the header shows a login/logout icon and protected routes require sign-in.  
-When auth is **disabled**, the app behaves as fully public and skips Keycloak entirely.
+When auth is **disabled**, the app behaves as fully public and skips OIDC authentication entirely.
 
 ---
 
@@ -60,16 +60,17 @@ When auth is **disabled**, the app behaves as fully public and skips Keycloak en
     - Dynamic year (`© <current year>`).
     - Link to HTML sitemap (`/site-map`) and XML sitemap (`/sitemap.xml`).
 
-- **Keycloak Authentication**
-  - Frontend-only Keycloak integration using `keycloak-js`.
-  - Central `KeycloakAuthService` that:
+- **OIDC Authentication (using oidc-client-ts)**
+  - Frontend-only OIDC integration using `oidc-client-ts` (works with Keycloak or any OIDC provider).
+  - Central `OidcAuthService` that:
     - Handles PKCE login, token refresh, and logout.
     - Maintains auth state in a small observable store.
+    - Supports automatic silent token renewal.
   - `AuthProvider` exposes a `useAuth()` hook with `status`, `profile`, `token`, and `login/logout/refresh` helpers.
   - `AuthGate` component wraps protected content and:
     - Shows a loading card while auth initialises.
     - Shows an error card when auth fails.
-    - Shows a “Sign in with Keycloak” card when unauthenticated.
+    - Shows a "Sign in" card when unauthenticated.
     - Renders children normally when authenticated or when auth is disabled.
 
 - **Forms and validation**

@@ -1,5 +1,5 @@
-import { KeycloakAuthService } from './KeycloakAuthService'
+import { OidcAuthService } from './OidcAuthService'
 
-export const authService = new KeycloakAuthService()
+export const authService = new OidcAuthService()
 
 

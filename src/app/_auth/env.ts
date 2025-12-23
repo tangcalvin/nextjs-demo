@@ -13,38 +13,47 @@ function getOnLoad(): OnLoadMode {
   return 'check-sso'
 }
 
-export type KeycloakEnv = {
+export type OidcEnv = {
   enabled: boolean
-  url: string
-  realm: string
+  authority: string
   clientId: string
+  redirectUri: string
+  postLogoutRedirectUri: string
   onLoad: OnLoadMode
 }
 
-export function readKeycloakEnv(): KeycloakEnv {
+export function readOidcEnv(): OidcEnv {
   const enabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true'
 
   if (!enabled) {
-    // When auth is disabled, values are placeholders and never used.
     return {
       enabled,
-      url: '',
-      realm: '',
+      authority: '',
       clientId: '',
+      redirectUri: '',
+      postLogoutRedirectUri: '',
       onLoad: 'check-sso',
     }
   }
 
+  const url = required('NEXT_PUBLIC_KEYCLOAK_URL', process.env.NEXT_PUBLIC_KEYCLOAK_URL)
+  const realm = required('NEXT_PUBLIC_KEYCLOAK_REALM', process.env.NEXT_PUBLIC_KEYCLOAK_REALM)
+  const clientId = required(
+    'NEXT_PUBLIC_KEYCLOAK_CLIENT_ID',
+    process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID,
+  )
+
+  // Build OIDC authority URL (Keycloak realm endpoint)
+  const authority = `${url}/realms/${realm}`
+  const redirectUri = typeof window !== 'undefined' ? window.location.origin : ''
+  const postLogoutRedirectUri = redirectUri
+
   return {
     enabled,
-    url: required('NEXT_PUBLIC_KEYCLOAK_URL', process.env.NEXT_PUBLIC_KEYCLOAK_URL),
-    realm: required('NEXT_PUBLIC_KEYCLOAK_REALM', process.env.NEXT_PUBLIC_KEYCLOAK_REALM),
-    clientId: required(
-      'NEXT_PUBLIC_KEYCLOAK_CLIENT_ID',
-      process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID,
-    ),
+    authority,
+    clientId,
+    redirectUri,
+    postLogoutRedirectUri,
     onLoad: getOnLoad(),
   }
 }
-
-

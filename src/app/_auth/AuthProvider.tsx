@@ -8,15 +8,13 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react'
-import type Keycloak from 'keycloak-js'
 import { authService } from './authService'
 import type { AuthState, AuthStatus } from './types'
-import { readKeycloakEnv } from './env'
+import { readOidcEnv } from './env'
 
 export type AuthContextValue = {
   status: AuthStatus
   error?: string
-  keycloak?: Keycloak
   profile?: AuthState['profile']
   token?: AuthState['token']
   tokenParsed?: AuthState['tokenParsed']
@@ -37,12 +35,12 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const env = readKeycloakEnv()
+  const env = readOidcEnv()
   const [state, setState] = useState<AuthState>(() => authService.getState())
 
   useEffect(() => {
     if (!env.enabled) {
-      // When disabled, keep simple unauthenticated state and skip Keycloak init entirely.
+      // When disabled, keep simple unauthenticated state and skip OIDC init entirely.
       setState({ status: 'unauthenticated' })
       return
     }
@@ -55,7 +53,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       status: state.status,
       error: state.error,
-      keycloak: env.enabled ? authService.keycloak : undefined,
       profile: state.profile,
       token: state.token,
       tokenParsed: state.tokenParsed,

@@ -26,7 +26,7 @@ export default function HomePage() {
 
         <Typography variant="body1" color="text.secondary">
           This demo showcases a responsive layout with a persistent sidebar, user form,
-          and contacts search, optionally protected by Keycloak authentication.
+          and contacts search, optionally protected by OIDC authentication.
         </Typography>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1 }}>
