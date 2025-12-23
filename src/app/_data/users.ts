@@ -1,0 +1,62 @@
+export type UserOption = {
+  /** Ticker symbol */
+  id: string
+  /** Company name (or description) */
+  label: string
+}
+
+export const USER_OPTIONS: UserOption[] = [
+  { id: 'AAPL', label: 'Apple Inc.' },
+  { id: 'MSFT', label: 'Microsoft Corporation' },
+  { id: 'GOOGL', label: 'Alphabet Inc. (Class A)' },
+  { id: 'GOOG', label: 'Alphabet Inc. (Class C)' },
+  { id: 'AMZN', label: 'Amazon.com, Inc.' },
+  { id: 'META', label: 'Meta Platforms, Inc.' },
+  { id: 'TSLA', label: 'Tesla, Inc.' },
+  { id: 'NVDA', label: 'NVIDIA Corporation' },
+  { id: 'BRK.B', label: 'Berkshire Hathaway Inc. (Class B)' },
+  { id: 'BRK.A', label: 'Berkshire Hathaway Inc. (Class A)' },
+  { id: 'JPM', label: 'JPMorgan Chase & Co.' },
+  { id: 'JNJ', label: 'Johnson & Johnson' },
+  { id: 'V', label: 'Visa Inc.' },
+  { id: 'MA', label: 'Mastercard Incorporated' },
+  { id: 'WMT', label: 'Walmart Inc.' },
+  { id: 'PG', label: 'Procter & Gamble Company' },
+  { id: 'DIS', label: 'Walt Disney Company' },
+  { id: 'BAC', label: 'Bank of America Corporation' },
+  { id: 'HD', label: 'Home Depot, Inc.' },
+  { id: 'KO', label: 'Coca-Cola Company' },
+  { id: 'PEP', label: 'PepsiCo, Inc.' },
+  { id: 'INTC', label: 'Intel Corporation' },
+  { id: 'CSCO', label: 'Cisco Systems, Inc.' },
+  { id: 'ADBE', label: 'Adobe Inc.' },
+  { id: 'NFLX', label: 'Netflix, Inc.' },
+  { id: 'CRM', label: 'Salesforce, Inc.' },
+  { id: 'PYPL', label: 'PayPal Holdings, Inc.' },
+  { id: 'ABNB', label: 'Airbnb, Inc.' },
+  { id: 'UBER', label: 'Uber Technologies, Inc.' },
+  { id: 'LYFT', label: 'Lyft, Inc.' },
+  { id: 'SQ', label: 'Block, Inc. (Square)' },
+  { id: 'SHOP', label: 'Shopify Inc.' },
+  { id: 'ORCL', label: 'Oracle Corporation' },
+  { id: 'IBM', label: 'International Business Machines Corporation' },
+  { id: 'NKE', label: 'NIKE, Inc.' },
+  { id: 'MCD', label: "McDonald's Corporation" },
+  { id: 'XOM', label: 'Exxon Mobil Corporation' },
+  { id: 'CVX', label: 'Chevron Corporation' },
+  { id: 'PFE', label: 'Pfizer Inc.' },
+  { id: 'MRK', label: 'Merck & Co., Inc.' },
+  { id: 'T', label: 'AT&T Inc.' },
+  { id: 'VZ', label: 'Verizon Communications Inc.' },
+  { id: 'C', label: 'Citigroup Inc.' },
+  { id: 'GS', label: 'Goldman Sachs Group, Inc.' },
+  { id: 'BA', label: 'Boeing Company' },
+  { id: 'CAT', label: 'Caterpillar Inc.' },
+  { id: 'GE', label: 'General Electric Company' },
+  { id: 'F', label: 'Ford Motor Company' },
+  { id: 'GM', label: 'General Motors Company' },
+  { id: 'AMD', label: 'Advanced Micro Devices, Inc.' },
+  { id: 'QCOM', label: 'QUALCOMM Incorporated' },
+].sort((a, b) => a.label.localeCompare(b.label))
+
+
