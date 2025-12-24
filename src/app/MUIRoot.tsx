@@ -57,16 +57,20 @@ function AppShell({ children }: PropsWithChildren) {
               Next.js + MUI Demo
             </Typography>
             <Box sx={{ flexGrow: 1 }} />
-            {enabled && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {profile && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <AccountCircleIcon fontSize="small" />
-                    <Typography variant="body2">
-                      {profile.firstName ?? profile.username ?? 'User'}
-                    </Typography>
-                  </Box>
-                )}
+                    {enabled && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {profile && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <AccountCircleIcon fontSize="small" />
+                            <Typography variant="body2">
+                              {(profile as Record<string, unknown>).name ??
+                                (profile as Record<string, unknown>).preferred_username ??
+                                (profile as Record<string, unknown>).username ??
+                                (profile as Record<string, unknown>).email ??
+                                'User'}
+                            </Typography>
+                          </Box>
+                        )}
                 <IconButton
                   color="inherit"
                   size="small"

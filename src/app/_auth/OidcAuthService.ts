@@ -33,6 +33,12 @@ export class OidcAuthService {
       return
     }
 
+    // Only initialize UserManager in the browser (not during SSR)
+    if (typeof window === 'undefined') {
+      this.store.set({ status: 'loading' })
+      return
+    }
+
     // Initialize UserManager with OIDC configuration
     this.userManager = new UserManager({
       authority: env.authority,
@@ -134,6 +140,56 @@ export class OidcAuthService {
   }
 
   private async doInit(): Promise<AuthState> {
+    // Wait for browser environment if we're still in SSR
+    if (typeof window === 'undefined') {
+      this.store.set({ status: 'loading' })
+      return this.store.get()
+    }
+
+    // Initialize UserManager if not already done (happens when constructor ran during SSR)
+    if (!this.userManager && this.enabled) {
+      const env = readOidcEnv()
+      this.userManager = new UserManager({
+        authority: env.authority,
+        client_id: env.clientId,
+        redirect_uri: env.redirectUri,
+        post_logout_redirect_uri: env.postLogoutRedirectUri,
+        response_type: 'code',
+        scope: 'openid profile email',
+        automaticSilentRenew: true,
+        includeIdTokenInSilentRenew: true,
+        userStore: new WebStorageStateStore({ store: window.localStorage }),
+        extraQueryParams: {},
+        filterProtocolClaims: true,
+        loadUserInfo: true,
+      })
+
+      // Set up event handlers
+      this.userManager.events.addUserLoaded((user) => {
+        this.syncUserToState(user)
+      })
+
+      this.userManager.events.addUserUnloaded(() => {
+        this.store.set({
+          status: 'unauthenticated',
+          error: undefined,
+          profile: undefined,
+          token: undefined,
+          tokenParsed: undefined,
+          user: undefined,
+        })
+      })
+
+      this.userManager.events.addAccessTokenExpiring(() => {
+        void this.refreshToken(30)
+      })
+
+      this.userManager.events.addSilentRenewError((error) => {
+        console.error('Silent renew error:', error)
+        void this.refreshToken(30)
+      })
+    }
+
     if (!this.userManager) {
       this.store.set({ status: 'error', error: 'UserManager not initialized' })
       return this.store.get()
