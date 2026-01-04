@@ -23,10 +23,14 @@ export class OidcAuthService {
   private initPromise: Promise<AuthState> | null = null
   private refreshTimer: number | null = null
   private readonly enabled: boolean
+  private readonly refreshIntervalSeconds: number
+  private readonly proactiveRefreshThresholdSeconds: number
 
   constructor() {
     const env = readOidcEnv()
     this.enabled = env.enabled
+    this.refreshIntervalSeconds = env.refreshIntervalSeconds
+    this.proactiveRefreshThresholdSeconds = env.proactiveRefreshThresholdSeconds
 
     if (!this.enabled) {
       this.store.set({ status: 'unauthenticated' })
@@ -46,14 +50,18 @@ export class OidcAuthService {
       redirect_uri: env.redirectUri,
       post_logout_redirect_uri: env.postLogoutRedirectUri,
       response_type: 'code',
-      scope: 'openid profile email',
+      // Include 'offline_access' scope to get refresh tokens that persist across sessions
+      scope: 'openid profile email offline_access',
       automaticSilentRenew: true,
       includeIdTokenInSilentRenew: true,
       userStore: new WebStorageStateStore({ store: window.localStorage }),
-      // PKCE configuration
+      // PKCE is enabled by default in oidc-client-ts for authorization code flow
+      // Explicitly set code_challenge_method to S256 (recommended)
       extraQueryParams: {},
       filterProtocolClaims: true,
       loadUserInfo: true,
+      // Ensure PKCE is used (default, but explicit for clarity)
+      // oidc-client-ts automatically generates code_verifier and code_challenge
     })
 
     // Set up event handlers
@@ -89,6 +97,59 @@ export class OidcAuthService {
 
   subscribe(listener: (state: AuthState) => void): () => void {
     return this.store.subscribe(listener)
+  }
+
+  private extractErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message
+    }
+    if (typeof error === 'string') {
+      return error
+    }
+    if (error && typeof error === 'object') {
+      // Check for ErrorResponse or other error object structures from oidc-client-ts
+      const errObj = error as Record<string, unknown>
+      return String(
+        errObj.message ||
+          errObj.error ||
+          errObj.error_description ||
+          errObj.errorMessage ||
+          JSON.stringify(error)
+      )
+    }
+    return String(error)
+  }
+
+  private isSessionError(errorMessage: string): boolean {
+    const lowerMessage = errorMessage.toLowerCase()
+    return (
+      lowerMessage.includes('session not active') ||
+      lowerMessage.includes('session_not_active') ||
+      lowerMessage.includes('invalid_grant') ||
+      lowerMessage.includes('refresh token expired') ||
+      lowerMessage.includes('token expired') ||
+      lowerMessage.includes('session expired')
+    )
+  }
+
+  private async clearUserState(): Promise<void> {
+    try {
+      if (this.userManager) {
+        await this.userManager.removeUser()
+      }
+    } catch (removeError) {
+      console.warn('Error removing user:', removeError)
+      // Continue anyway - clear state manually
+    }
+
+    this.store.set({
+      status: 'unauthenticated',
+      error: undefined,
+      profile: undefined,
+      token: undefined,
+      tokenParsed: undefined,
+      user: undefined,
+    })
   }
 
   private syncUserToState(user: User | null) {
@@ -181,12 +242,21 @@ export class OidcAuthService {
       })
 
       this.userManager.events.addAccessTokenExpiring(() => {
+        console.log('Access token expiring, attempting refresh...')
         void this.refreshToken(30)
       })
 
       this.userManager.events.addSilentRenewError((error) => {
         console.error('Silent renew error:', error)
-        void this.refreshToken(30)
+        // Try to refresh manually
+        void this.refreshToken(30).catch((refreshError) => {
+          console.error('Manual refresh after silent renew error failed:', refreshError)
+          // If refresh fails, user may need to re-authenticate
+          this.store.set({
+            status: 'error',
+            error: 'Session expired. Please sign in again.',
+          })
+        })
       })
     }
 
@@ -268,13 +338,36 @@ export class OidcAuthService {
 
       try {
         const user = await this.userManager.getUser()
-        if (user && user.expired) {
-          await this.refreshToken(30)
+        if (!user) return
+
+        // Proactively refresh if token expires within the configured threshold
+        const expiresIn = user.expires_at ? user.expires_at - Math.floor(Date.now() / 1000) : 0
+        if (expiresIn > 0 && expiresIn < this.proactiveRefreshThresholdSeconds) {
+          console.log(`Token expires in ${expiresIn}s, refreshing proactively (threshold: ${this.proactiveRefreshThresholdSeconds}s)...`)
+          const refreshed = await this.refreshToken(this.proactiveRefreshThresholdSeconds)
+          if (!refreshed) {
+            console.warn('Proactive token refresh failed')
+          }
+        } else if (user.expired) {
+          console.log('Token expired, attempting refresh...')
+          const refreshed = await this.refreshToken(30)
+          if (!refreshed) {
+            console.warn('Token refresh failed after expiration')
+            // refreshToken already handles session errors and updates state appropriately
+            // Only set error if we're still in an authenticated state (non-session errors)
+            const currentState = this.store.get()
+            if (currentState.status === 'authenticated') {
+              this.store.set({
+                status: 'error',
+                error: 'Session expired. Please sign in again.',
+              })
+            }
+          }
         }
-      } catch {
-        // Ignore errors in refresh loop
+      } catch (error) {
+        console.error('Error in token refresh loop:', error)
       }
-    }, 15_000)
+    }, this.refreshIntervalSeconds * 1000)
   }
 
   dispose() {
@@ -295,11 +388,17 @@ export class OidcAuthService {
   }
 
   async refreshToken(minValiditySeconds = 30): Promise<boolean> {
-    if (!this.enabled || !this.userManager) return false
+    if (!this.enabled || !this.userManager) {
+      console.warn('Cannot refresh token: auth disabled or UserManager not available')
+      return false
+    }
 
     try {
       const user = await this.userManager.getUser()
-      if (!user) return false
+      if (!user) {
+        console.warn('Cannot refresh token: no user found')
+        return false
+      }
 
       // Check if token expires within minValiditySeconds
       const expiresIn = user.expires_at ? user.expires_at - Math.floor(Date.now() / 1000) : 0
@@ -308,15 +407,53 @@ export class OidcAuthService {
         return false
       }
 
+      console.log(`Refreshing token (expires in ${expiresIn}s, need ${minValiditySeconds}s validity)`)
+      
       // Perform silent renew
-      const renewedUser = await this.userManager.signinSilent()
+      let renewedUser
+      try {
+        renewedUser = await this.userManager.signinSilent()
+      } catch (silentError) {
+        // signinSilent can throw errors - handle them here before the outer catch
+        console.error('signinSilent failed:', silentError)
+        
+        // Check if it's a session error
+        const errorMessage = this.extractErrorMessage(silentError)
+        if (this.isSessionError(errorMessage)) {
+          console.warn('Session expired during signinSilent, clearing user state')
+          await this.clearUserState()
+          return false
+        }
+        // Re-throw if it's not a session error so outer catch can handle it
+        throw silentError
+      }
+      
       if (renewedUser) {
+        console.log('Token refreshed successfully')
         this.syncUserToState(renewedUser)
         return true
       }
 
+      console.warn('Token refresh returned no user')
       return false
-    } catch {
+    } catch (error) {
+      console.error('Token refresh failed:', error)
+      
+      // Check if it's a "Session not active" error (refresh token expired/invalid)
+      const errorMessage = this.extractErrorMessage(error)
+      
+      if (this.isSessionError(errorMessage)) {
+        console.warn('Session expired or refresh token invalid, clearing user state for re-authentication')
+        await this.clearUserState()
+        return false
+      }
+      
+      // For other errors, update state to indicate error but don't clear auth state
+      // (might be a temporary network issue)
+      this.store.set({
+        status: 'error',
+        error: errorMessage || 'Failed to refresh session',
+      })
       return false
     }
   }

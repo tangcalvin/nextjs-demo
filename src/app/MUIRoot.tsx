@@ -13,6 +13,7 @@ import {
   ListItemText,
   ThemeProvider,
   Toolbar,
+  Tooltip,
   Typography,
   createTheme,
 } from '@mui/material'
@@ -42,7 +43,22 @@ const navItems: { label: string; href: string }[] = [
 
 function AppShell({ children }: PropsWithChildren) {
   const year = new Date().getFullYear()
-  const { enabled, status, profile, login, logout } = useAuth()
+  const { enabled, status, profile, tokenParsed, login, logout } = useAuth()
+
+  // Extract and format token expiry time
+  const getTokenExpiryText = (): string => {
+    if (!tokenParsed || typeof tokenParsed !== 'object') return 'Token expiry unknown'
+    
+    const exp = (tokenParsed as Record<string, unknown>).exp
+    if (!exp || typeof exp !== 'number') return 'Token expiry unknown'
+    
+    try {
+      const expiryDate = new Date(exp * 1000) // Convert Unix timestamp to Date
+      return `Token expires: ${expiryDate.toLocaleString()}`
+    } catch {
+      return 'Token expiry unknown'
+    }
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -60,16 +76,27 @@ function AppShell({ children }: PropsWithChildren) {
                     {enabled && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {profile && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AccountCircleIcon fontSize="small" />
-                            <Typography variant="body2">
-                              {(profile as Record<string, unknown>).name ??
-                                (profile as Record<string, unknown>).preferred_username ??
-                                (profile as Record<string, unknown>).username ??
-                                (profile as Record<string, unknown>).email ??
-                                'User'}
-                            </Typography>
-                          </Box>
+                          <Tooltip title={getTokenExpiryText()} arrow>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                cursor: 'help',
+                              }}
+                            >
+                              <AccountCircleIcon fontSize="small" />
+                              <Typography variant="body2">
+                                {String(
+                                  (profile as Record<string, unknown>).name ??
+                                    (profile as Record<string, unknown>).preferred_username ??
+                                    (profile as Record<string, unknown>).username ??
+                                    (profile as Record<string, unknown>).email ??
+                                    'User'
+                                )}
+                              </Typography>
+                            </Box>
+                          </Tooltip>
                         )}
                 <IconButton
                   color="inherit"

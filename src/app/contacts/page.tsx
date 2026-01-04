@@ -76,6 +76,20 @@ export default function ContactQueryPage() {
     { field: 'country', headerName: 'Country', width: 120 },
     { field: 'status', headerName: 'Status', width: 120 },
     { field: 'createdAt', headerName: 'Created at', width: 140 },
+    {
+      field: 'refreshed_at',
+      headerName: 'Refreshed at',
+      width: 180,
+      valueFormatter: (value) => {
+        if (!value) return ''
+        try {
+          const date = new Date(value as string)
+          return date.toLocaleString()
+        } catch {
+          return value as string
+        }
+      },
+    },
   ]
 
   const onSubmit = async (data: ContactQueryValues) => {
@@ -217,6 +231,7 @@ export default function ContactQueryPage() {
                 { label: 'Country' },
                 { label: 'Status' },
                 { label: 'Created at' },
+                { label: 'Refreshed at' },
               ]}
               rowCount={8}
             />

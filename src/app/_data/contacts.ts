@@ -6,6 +6,7 @@ export type Contact = {
   country: string
   status: 'active' | 'inactive' | 'prospect'
   createdAt: string // ISO date (YYYY-MM-DD)
+  refreshed_at?: string // ISO timestamp - added by API when data is refreshed
 }
 
 export const CONTACTS: Contact[] = [
